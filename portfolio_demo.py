@@ -106,6 +106,21 @@ def build_nav(
     mv_wide   : (Date x Security) MV matrix — asset-level returns
     hierarchy : Security -> Desk/Book/Strategy
     """
+    ## FX ffill fix (for missing dates and bank holidays)
+    # 1. Create a complete grid of all dates present in prices and all currencies
+    all_dates = pd.Series(prices["Date"].unique(), name="Date")
+    all_currencies = pd.Series(fx["Currency"].unique(), name="Currency")
+    full_grid = all_dates.to_frame().merge(all_currencies.to_frame(), how="cross")
+
+    # 2. Merge with actual FX data, sort, and forward-fill missing dates per currency
+    fx = full_grid.merge(
+        fx[["Date", "Currency", "FX_to_Report_Ccy"]],
+        on=["Date", "Currency"],
+        how="left"
+    )
+    fx = fx.sort_values(by=["Currency", "Date"])
+    fx["FX_to_Report_Ccy"] = fx.groupby("Currency")["FX_to_Report_Ccy"].ffill().fillna(1.0)
+
     # snapshot positions across all historical dates
     df = prices[["Date", "Security", "Price"]].merge(
         positions[["Security", "Quantity", "Price_Currency",
@@ -275,6 +290,7 @@ def run_risk_report(
     # CVaR exceedance: when we breach, does the model size the loss correctly?
     window = min(250, T // 2)
     var_series = re.rolling_var(returns, window=window, confidence=confidence_level, method="historical")
+    var_series_fhs = re.rolling_var(returns, window=window, confidence=confidence_level, method="fhs")
     cvar_series = re.rolling_cvar(returns, window=window, confidence=confidence_level)
     valid = ~np.isnan(var_series)
 
@@ -332,6 +348,7 @@ def run_risk_report(
         cvar_forecasts = cvar_series[valid]),
         window         = window,
         var_series     = var_series,
+        var_series_fhs = var_series_fhs,
         cvar_series    = cvar_series,
         var_total      = var_total,
         var_equity     = var_equity,

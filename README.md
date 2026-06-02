@@ -67,7 +67,7 @@ The script produces:
 |---|---|
 | Volatility | EWMA current and average, annualised |
 | Risk measures | Historical VaR, FHS-VaR, CVaR, FHS-CVaR at 1-day 99% |
-| Attribution | Component VaR by security, book and desk (Euler decomposition) |
+| Attribution | Component VaR by security, book and desk |
 | Backtest | Binomial, Christoffersen, CVaR exceedance, Basel Traffic Light |
 | FX decomposition | Total / equity / FX split, FX add-on |
 
